@@ -173,6 +173,15 @@ export default {
       return json({ events });
     }
 
+    // Delete pet: DELETE /pet/:id
+    const deleteMatch = pathname.match(/^\/pet\/([^/]+)$/);
+    if (deleteMatch && request.method === "DELETE") {
+      const petId = deleteMatch[1];
+      const stub = getPetStub(env, petId);
+      const result = await stub.delete();
+      return json(result);
+    }
+
     return errorResponse("Not found", 404);
   },
 };

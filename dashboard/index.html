@@ -155,6 +155,15 @@
     -webkit-appearance: none; width: 16px; height: 16px;
     background: var(--accent); border-radius: 50%; cursor: pointer;
   }
+  .pet-switcher { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .pet-switcher select {
+    background: var(--surface); color: var(--text); border: 1px solid #4a4a8a;
+    padding: 4px 8px; border-radius: 4px; font-size: 0.9em;
+  }
+  .switch-btn {
+    background: var(--accent); color: white; border: none; padding: 4px 10px;
+    border-radius: 4px; cursor: pointer; font-size: 1em;
+  }
 
   .response-box .mood-tag {
     font-size: 11px;
@@ -224,7 +233,21 @@
 // Set your deployed worker URL here, or enter it in the dashboard
 const API_URL = localStorage.getItem('corvid_api_url')
   || (window.location.hostname === 'localhost' ? 'http://localhost:8787' : '');
-const PET_ID = localStorage.getItem('corvid_pet_id') || 'scrit';
+let PET_ID = localStorage.getItem('corvid_pet_id') || 'scrit';
+
+function getPetList() {
+  try { return JSON.parse(localStorage.getItem('corvid_pets') || '[]'); } catch { return []; }
+}
+function savePetList(pets) {
+  localStorage.setItem('corvid_pets', JSON.stringify(pets));
+}
+function registerPet(id, name) {
+  const pets = getPetList();
+  if (!pets.find(p => p.id === id)) {
+    pets.push({ id, name });
+    savePetList(pets);
+  }
+}
 const SHARED_SECRET = ''; // set if auth enabled
 
 const HEADERS = {
@@ -259,8 +282,11 @@ function renderApp(status) {
 
   document.getElementById('app').innerHTML = `
     <div class="header">
+      ${petSwitcherHTML()}
       <h1>${status.species?.emoji || ''} ${status.name} <span style="cursor:pointer;font-size:0.6em;opacity:0.5" onclick="showSettings()">⚙️</span></h1>
-      <div class="portrait">${status.species ? status.species.name + ' · ' : ''}${status.isSleeping ? '💤 sleeping' : status.mood} · ${ageStr} · ${status.totalInteractions} interactions</div>
+      <div class="portrait">${status.species ? status.species.name + ' · ' : ''}${status.isSleeping ? '💤 sleeping' : status.mood} · ${ageStr} · ${status.totalInteractions} interactions
+        <span style="cursor:pointer;opacity:0.4;margin-left:8px" onclick="deletePet()" title="Delete pet">🗑️</span>
+      </div>
     </div>
 
     <div class="card">
@@ -481,6 +507,48 @@ async function createPet() {
   `;
 }
 
+function petSwitcherHTML() {
+  const pets = getPetList();
+  if (pets.length <= 1) return '';
+  return `<div class="pet-switcher">
+    <select onchange="switchPet(this.value)">
+      ${pets.map(p => `<option value="${p.id}" ${p.id === PET_ID ? 'selected' : ''}>${p.name || p.id}</option>`).join('')}
+    </select>
+    <button class="switch-btn" onclick="showNewPetForm()">+</button>
+  </div>`;
+}
+
+function switchPet(id) {
+  PET_ID = id;
+  localStorage.setItem('corvid_pet_id', id);
+  refreshStatus();
+}
+
+function showNewPetForm() {
+  document.getElementById('response-container').style.display = 'none';
+  createPet();
+}
+
+async function deletePet() {
+  if (!confirm(`Delete ${PET_ID}? This cannot be undone.`)) return;
+  try {
+    await api(`/pet/${PET_ID}`, 'DELETE');
+    const pets = getPetList().filter(p => p.id !== PET_ID);
+    savePetList(pets);
+    if (pets.length > 0) {
+      PET_ID = pets[0].id;
+      localStorage.setItem('corvid_pet_id', PET_ID);
+      refreshStatus();
+    } else {
+      PET_ID = 'scrit';
+      localStorage.setItem('corvid_pet_id', PET_ID);
+      location.reload();
+    }
+  } catch (e) {
+    alert('Delete failed: ' + e.message);
+  }
+}
+
 function chemSlider(label, id, defaultVal, desc) {
   const pct = Math.round(defaultVal * 100);
   return `<div class="chem-slider-row">
@@ -564,6 +632,7 @@ async function submitCreate() {
   } else {
     await api(`/pet/${PET_ID}/init`, 'POST', { name, speciesId: speciesId || undefined });
   }
+  registerPet(PET_ID, name);
   refreshStatus();
 }
 

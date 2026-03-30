@@ -400,6 +400,15 @@ export class Pet extends DurableObject {
     return this.collection.toJSON();
   }
 
+  async delete(): Promise<{ deleted: boolean; name: string }> {
+    await this.loadState();
+    const name = this.name;
+    await this.ctx.storage.deleteAll();
+    await this.ctx.storage.deleteAlarm();
+    this.initialized = false;
+    return { deleted: true, name };
+  }
+
   // --- Internal ---
 
   private executeAction(action: string): Record<string, any> {
