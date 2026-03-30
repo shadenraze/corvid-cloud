@@ -193,6 +193,25 @@ export class Collection {
     return result;
   }
 
+  collectFragment(text: string, source: string = "overheard", mood: string = "neutral", chemState?: Record<string, number>): Trinket | null {
+    if (this.collectedContent.has(text)) return null;
+    const trinket: Trinket = {
+      content: text,
+      source,
+      collectedAt: Date.now() / 1000,
+      timesShown: 0,
+      sparkle: 1.2, // conversation fragments are extra shiny
+      moodWhenFound: mood,
+      chemSnapshot: this.snapshotChems(chemState),
+      treasured: false,
+      accepted: false,
+      declined: false,
+    };
+    const result = this.add(trinket);
+    if (result) this.collectedContent.add(text);
+    return result;
+  }
+
   receiveGift(content: string, giver: string = "human", mood: string = "neutral", chemState?: Record<string, number>): Trinket | null {
     if (this.collectedContent.has(content)) return null;
     const trinket: Trinket = {

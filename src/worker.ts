@@ -144,6 +144,17 @@ export default {
       return json(result);
     }
 
+    // Feed words: POST /pet/:id/words { text, source? }
+    const wordsMatch = pathname.match(/^\/pet\/([^/]+)\/words$/);
+    if (wordsMatch && request.method === "POST") {
+      const petId = wordsMatch[1];
+      const body = await request.json() as { text: string; source?: string };
+      if (!body.text) return errorResponse("Missing 'text' field", 400);
+      const stub = getPetStub(env, petId);
+      const result = await stub.feedWords(body.text, body.source ?? "overheard");
+      return json(result);
+    }
+
     // Get collection: GET /pet/:id/collection
     const collectionMatch = pathname.match(/^\/pet\/([^/]+)\/collection$/);
     if (collectionMatch && request.method === "GET") {

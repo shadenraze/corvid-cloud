@@ -283,6 +283,9 @@ function renderApp(status) {
         <button class="interact-btn" onclick="doInteract('talk')">💬 Talk</button>
         <button class="interact-btn" onclick="doInteract('poke')">👆 Poke</button>
         <button class="interact-btn" onclick="doPlay('chase')">🏃 Chase</button>
+        <button class="interact-btn" onclick="doWords()">📝 Words</button>
+        <button class="interact-btn" onclick="doGift()">🎁 Gift</button>
+        <button class="interact-btn" onclick="doTrade()">🔄 Trade</button>
         <button class="interact-btn" onclick="doPlay('puzzle')">🧩 Puzzle</button>
         <button class="interact-btn" onclick="doPlay('tug')">🪢 Tug</button>
         <button class="interact-btn" onclick="doPlay('hide')">👁️ Hide</button>
@@ -487,6 +490,36 @@ function chemSlider(label, id, defaultVal, desc) {
       class="chem-range">
     <small style="color:var(--muted)">${desc}</small>
   </div>`;
+}
+
+async function doWords() {
+  const text = prompt('Feed your pet some words:');
+  if (!text) return;
+  try {
+    const data = await api(`/pet/${PET_ID}/words`, 'POST', { text });
+    showResponse(data);
+    refreshStatus();
+  } catch (e) { console.error('Words failed:', e); }
+}
+
+async function doGift() {
+  const content = prompt('Give your pet something:');
+  if (!content) return;
+  try {
+    const data = await api(`/pet/${PET_ID}/gift`, 'POST', { content });
+    showResponse(data);
+    refreshStatus();
+  } catch (e) { console.error('Gift failed:', e); }
+}
+
+async function doTrade() {
+  const offered = prompt('Offer something in trade:');
+  if (!offered) return;
+  try {
+    const data = await api(`/pet/${PET_ID}/trade`, 'POST', { offering: offered });
+    showResponse(data);
+    refreshStatus();
+  } catch (e) { console.error('Trade failed:', e); }
 }
 
 function selectSpecies(id) {

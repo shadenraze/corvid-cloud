@@ -237,6 +237,35 @@ export class Pet extends DurableObject {
     return result;
   }
 
+  async feedWords(text: string, source: string = "overheard"): Promise<Record<string, any>> {
+    await this.loadState();
+    const mood = this.biochem.getMoodSummary();
+    const chemState = this.biochem.getState();
+
+    // Apply text as chemistry stimulus
+    this.biochem.applyStimulus("receive_words");
+
+    const trinket = this.collection.collectFragment(text, source, mood, chemState);
+    if (trinket) {
+      this.totalInteractions++;
+      this.lastInteractionTime = Date.now() / 1000;
+      this.biochem.chemicals.get("dopamine")!.level = Math.min(1, this.biochem.chemicals.get("dopamine")!.level + 0.06);
+
+      const responses = [
+        `${this.name} tilts head. "${text}" — yes. Tucks that into the nest.`,
+        `${this.name} considers "${text}" for a long moment. Something about it resonates. Kept.`,
+        `${this.name} makes a small sound. That word means something. Stores it.`,
+        `${this.name} fixes you with a bright eye. "${text}." Heard. Understood. Mine now.`,
+      ];
+      const msg = pickRandom(responses);
+      await this.saveState();
+      return { type: "words_response", collected: true, item: trinket.content, message: msg, mood };
+    } else {
+      await this.saveState();
+      return { type: "words_response", collected: false, message: `${this.name} glances at "${text}" and looks away. Already have that one. Or it's not shiny enough.`, mood };
+    }
+  }
+
   async proposeTrade(offered: string): Promise<Record<string, any>> {
     await this.loadState();
     const mood = this.biochem.getMoodSummary();
