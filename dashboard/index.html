@@ -322,8 +322,8 @@ function renderApp(status) {
 
 
     <div class="card">
-      <h2>Nest (${status.collectionSize} items)</h2>
-      <div class="collection-list" id="collection">
+      <h2 onclick="toggleNest()" style="cursor:pointer">Nest (${status.collectionSize} items) <span id="nest-toggle">▼</span></h2>
+      <div class="collection-list" id="collection" style="display:none">
         <div class="loading">Loading collection...</div>
       </div>
     </div>
@@ -333,7 +333,6 @@ function renderApp(status) {
     </div>
   `;
 
-  loadCollection();
 }
 
 async function loadCollection() {
@@ -505,6 +504,19 @@ async function createPet() {
       </div>
     </div>
   `;
+}
+
+function toggleNest() {
+  const el = document.getElementById('collection');
+  const toggle = document.getElementById('nest-toggle');
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    toggle.textContent = '▲';
+    loadCollection();
+  } else {
+    el.style.display = 'none';
+    toggle.textContent = '▼';
+  }
 }
 
 function petSwitcherHTML() {
