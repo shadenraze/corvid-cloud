@@ -144,6 +144,17 @@
   .species-option.selected { border-color: var(--accent); background: #1a2a4e; }
   .species-option .species-emoji { font-size: 1.8em; }
   .species-option small { color: var(--muted); }
+  .chem-sliders { display: flex; flex-direction: column; gap: 10px; }
+  .chem-slider-row { display: flex; flex-direction: column; gap: 2px; }
+  .chem-slider-label { display: flex; justify-content: space-between; font-size: 0.9em; }
+  .chem-range {
+    width: 100%; height: 6px; -webkit-appearance: none; appearance: none;
+    background: #2a2a5a; border-radius: 3px; outline: none;
+  }
+  .chem-range::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+  }
 
   .response-box .mood-tag {
     font-size: 11px;
@@ -448,13 +459,34 @@ async function createPet() {
           <input id="custom-words" type="text" placeholder="Shiny words (comma separated)"
             style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:6px;">
           <input id="custom-objects" type="text" placeholder="Found objects (comma separated)"
-            style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:6px;">
+            style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:12px;">
+          <strong>Starting Chemistry</strong><br><small style="color:var(--muted)">Sets initial personality. Evolves organically from here.</small><br><br>
+          <div class="chem-sliders">
+            ${chemSlider('Dopamine', 'chem-dopamine', 0.3, 'Pleasure, reward, motivation')}
+            ${chemSlider('Oxytocin', 'chem-oxytocin', 0.2, 'Bonding, trust, comfort')}
+            ${chemSlider('Serotonin', 'chem-serotonin', 0.4, 'Mood, calm, contentment')}
+            ${chemSlider('Cortisol', 'chem-cortisol', 0.1, 'Stress, alertness, vigilance')}
+            ${chemSlider('Melatonin', 'chem-melatonin', 0.0, 'Sleepiness, nocturnal rhythm')}
+            ${chemSlider('Adrenaline', 'chem-adrenaline', 0.0, 'Excitement, fear, startle')}
+            ${chemSlider('Glucose', 'chem-glucose', 0.7, 'Energy, vitality')}
+          </div>
         </div>
         <br>
         <button class="interact-btn" onclick="submitCreate()">Create</button>
       </div>
     </div>
   `;
+}
+
+function chemSlider(label, id, defaultVal, desc) {
+  const pct = Math.round(defaultVal * 100);
+  return `<div class="chem-slider-row">
+    <div class="chem-slider-label">${label} <span id="${id}-val">${pct}%</span></div>
+    <input type="range" id="${id}" min="0" max="100" value="${pct}"
+      oninput="document.getElementById('${id}-val').textContent=this.value+'%'"
+      class="chem-range">
+    <small style="color:var(--muted)">${desc}</small>
+  </div>`;
 }
 
 function selectSpecies(id) {
@@ -475,6 +507,7 @@ async function submitCreate() {
     const customWords = document.getElementById('custom-words').value.split(',').map(s => s.trim()).filter(Boolean);
     const customObjects = document.getElementById('custom-objects').value.split(',').map(s => s.trim()).filter(Boolean);
     const customId = customName.toLowerCase().replace(/\s+/g, '-');
+    const getVal = id => parseInt(document.getElementById(id)?.value || '0') / 100;
     await api(`/pet/${PET_ID}/init`, 'POST', {
       name,
       species: {
@@ -484,6 +517,15 @@ async function submitCreate() {
         description: customDesc,
         shinyWords: customWords,
         foundObjects: customObjects,
+        startingChemistry: {
+          dopamine: getVal('chem-dopamine'),
+          oxytocin: getVal('chem-oxytocin'),
+          serotonin: getVal('chem-serotonin'),
+          cortisol: getVal('chem-cortisol'),
+          melatonin: getVal('chem-melatonin'),
+          adrenaline: getVal('chem-adrenaline'),
+          glucose: getVal('chem-glucose'),
+        }
       }
     });
   } else {
