@@ -8,6 +8,7 @@ import { DurableObject } from "cloudflare:workers";
 import { BiochemSystem } from "./biochem";
 import { Collection, Trinket } from "./collection";
 import { CrowBrain, ACTIONS } from "./brain";
+import { getSpecies, listSpecies, SpeciesPreset } from "./species";
 
 interface PetState {
   name: string;
@@ -36,6 +37,7 @@ export class Pet extends DurableObject {
   private brain: CrowBrain;
   private collection: Collection;
   private name: string = "unnamed";
+  private speciesId?: string;
   private birthTime: number = 0;
   private totalInteractions: number = 0;
   private lastInteractionTime: number = 0;
@@ -51,11 +53,11 @@ export class Pet extends DurableObject {
     this.collection = new Collection();
   }
 
-  async initialize(name: string = "unnamed", speciesId?: string): Promise<{ created: boolean; name: string }> {
+  async initialize(name: string = "unnamed", speciesId?: string): Promise<{ created: boolean; name: string; speciesId?: string }> {
     const existing = await this.ctx.storage.sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='pet'").toArray();
     if (existing.length > 0) {
       await this.loadState();
-      return { created: false, name: this.name };
+      return { created: false, name: this.name, speciesId: this.speciesId };
     }
 
     // Fresh pet
@@ -67,14 +69,33 @@ export class Pet extends DurableObject {
     `);
 
     this.name = name;
+    this.speciesId = speciesId;
     this.birthTime = Date.now() / 1000;
     this.lastInteractionTime = Date.now() / 1000;
+
+    // Apply species presets
+    const species = speciesId ? getSpecies(speciesId) : null;
+    if (species) {
+      // Override starting chemistry — drives are derived from chemistry
+      for (const [chem, level] of Object.entries(species.startingChemistry)) {
+        const c = this.biochem.chemicals.get(chem);
+        if (c) c.level = level;
+      }
+      // Override collection word pools
+      if (species.shinyWords.length > 0) {
+        this.collection.shinyWords = species.shinyWords;
+      }
+      if (species.foundObjects.length > 0) {
+        this.collection.foundObjects = species.foundObjects;
+      }
+    }
+
     await this.saveState();
 
     // Schedule first tick in 5 minutes
     await this.ctx.storage.setAlarm(Date.now() + 5 * 60 * 1000);
 
-    return { created: true, name };
+    return { created: true, name, speciesId };
   }
 
   async tick(nTicks: number = 1): Promise<Array<{ type: string; message: string }>> {
@@ -292,8 +313,10 @@ export class Pet extends DurableObject {
     await this.loadState();
     const ageHours = (Date.now() / 1000 - this.birthTime) / 3600;
     const minutesSince = (Date.now() / 1000 - this.lastInteractionTime) / 60;
+    const species = this.speciesId ? getSpecies(this.speciesId) : null;
     return {
       name: this.name,
+      species: species ? { id: species.id, name: species.name, emoji: species.emoji, description: species.description } : null,
       ageHours: Math.round(ageHours * 10) / 10,
       mood: this.biochem.getMoodSummary(),
       isSleeping: this.isSleeping,
@@ -425,6 +448,7 @@ export class Pet extends DurableObject {
   private async saveState(): Promise<void> {
     const state: PetState = {
       name: this.name,
+      speciesId: this.speciesId,
       birthTime: this.birthTime,
       totalInteractions: this.totalInteractions,
       lastInteractionTime: this.lastInteractionTime,
@@ -455,6 +479,7 @@ export class Pet extends DurableObject {
     }
     const state: PetState = JSON.parse(rows[0].value as string);
     this.name = state.name;
+    this.speciesId = state.speciesId;
     this.birthTime = state.birthTime;
     this.totalInteractions = state.totalInteractions;
     this.lastInteractionTime = state.lastInteractionTime;

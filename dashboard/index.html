@@ -133,6 +133,18 @@
     color: var(--text);
   }
 
+  .species-grid { display: flex; flex-direction: column; gap: 8px; }
+  .species-option {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px; border-radius: 8px;
+    background: var(--surface); cursor: pointer;
+    border: 2px solid transparent; transition: border-color 0.2s;
+  }
+  .species-option:hover { border-color: var(--accent); }
+  .species-option.selected { border-color: var(--accent); background: #1a2a4e; }
+  .species-option .species-emoji { font-size: 1.8em; }
+  .species-option small { color: var(--muted); }
+
   .response-box .mood-tag {
     font-size: 11px;
     color: var(--text-dim);
@@ -236,8 +248,8 @@ function renderApp(status) {
 
   document.getElementById('app').innerHTML = `
     <div class="header">
-      <h1>${status.name} <span style="cursor:pointer;font-size:0.6em;opacity:0.5" onclick="showSettings()">⚙️</span></h1>
-      <div class="portrait">${status.isSleeping ? '💤 sleeping' : status.mood} · ${ageStr} · ${status.totalInteractions} interactions</div>
+      <h1>${status.species?.emoji || ''} ${status.name} <span style="cursor:pointer;font-size:0.6em;opacity:0.5" onclick="showSettings()">⚙️</span></h1>
+      <div class="portrait">${status.species ? status.species.name + ' · ' : ''}${status.isSleeping ? '💤 sleeping' : status.mood} · ${ageStr} · ${status.totalInteractions} interactions</div>
     </div>
 
     <div class="card">
@@ -392,9 +404,42 @@ function saveSettings() {
 }
 
 async function createPet() {
-  const name = prompt('Name your pet:', 'Scrit');
-  if (!name) return;
-  await api(`/pet/${PET_ID}/init`, 'POST', { name });
+  // Fetch available species
+  let species = [];
+  try {
+    species = await api('/species');
+  } catch (e) { /* fallback to no species */ }
+
+  const speciesOptions = species.map(s =>
+    `<label class="species-option" onclick="document.querySelectorAll('.species-option').forEach(el=>el.classList.remove('selected'));this.classList.add('selected');document.getElementById('species-input').value='${s.id}'">
+      <div class="species-emoji">${s.emoji}</div>
+      <div><strong>${s.name}</strong><br><small>${s.description}</small></div>
+      <input type="radio" name="species" value="${s.id}" style="display:none">
+    </label>`
+  ).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="header"><h1>Corvid</h1></div>
+    <div class="card">
+      <div class="response-box">
+        <strong>Create Your Pet</strong><br><br>
+        Name:<br>
+        <input id="name-input" type="text" placeholder="Scrit" value="Scrit"
+          style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:12px;">
+        <strong>Species:</strong><br><br>
+        <div class="species-grid">${speciesOptions}</div>
+        <input type="hidden" id="species-input" value="${species[0]?.id || ''}">
+        <br>
+        <button class="interact-btn" onclick="submitCreate()">Create</button>
+      </div>
+    </div>
+  `;
+}
+
+async function submitCreate() {
+  const name = document.getElementById('name-input').value.trim() || 'Scrit';
+  const speciesId = document.getElementById('species-input').value;
+  await api(`/pet/${PET_ID}/init`, 'POST', { name, speciesId: speciesId || undefined });
   refreshStatus();
 }
 

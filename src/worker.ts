@@ -4,6 +4,7 @@
  */
 
 import { Pet } from "./pet";
+import { listSpecies } from "./species";
 
 export { Pet };
 
@@ -58,6 +59,14 @@ export default {
     // Health check
     if (pathname === "/health") {
       return json({ status: "ok", service: "corvid-cloud" });
+    }
+
+    // Species list
+    if (pathname === "/species" && request.method === "GET") {
+      const species = listSpecies().map(s => ({
+        id: s.id, name: s.name, emoji: s.emoji, description: s.description
+      }));
+      return json(species);
     }
 
     // --- Protected routes ---
