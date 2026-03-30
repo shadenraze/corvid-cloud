@@ -303,7 +303,8 @@ async function doInteract(action) {
   try {
     const data = await api(`/pet/${PET_ID}/interact`, 'POST', { action });
     showResponse(data);
-    refreshStatus();
+    // Refresh status after a delay so response is readable
+    setTimeout(refreshStatus, 4000);
   } catch (e) {
     console.error('Interact failed:', e);
   }
@@ -313,7 +314,7 @@ async function doPlay(type) {
   try {
     const data = await api(`/pet/${PET_ID}/play`, 'POST', { type });
     showResponse(data);
-    refreshStatus();
+    setTimeout(refreshStatus, 4000);
   } catch (e) {
     console.error('Play failed:', e);
   }
