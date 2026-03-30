@@ -189,6 +189,13 @@
   <div class="loading">Loading...</div>
 </div>
 
+<div id="response-container" style="display:none">
+  <div class="card">
+    <h2>Response</h2>
+    <div class="response-box" id="response"></div>
+  </div>
+</div>
+
 <script>
 // === CONFIG ===
 // Set your deployed worker URL here, or enter it in the dashboard
@@ -260,13 +267,7 @@ function renderApp(status) {
       </div>
     </div>
 
-    <div class="card">
-      <h2>Response</h2>
-      <div class="response-box" id="response">
-        ${status.nest}
-        <div class="mood-tag">${status.mood}</div>
-      </div>
-    </div>
+
 
     <div class="card">
       <h2>Nest (${status.collectionSize} items)</h2>
@@ -303,8 +304,7 @@ async function doInteract(action) {
   try {
     const data = await api(`/pet/${PET_ID}/interact`, 'POST', { action });
     showResponse(data);
-    // Refresh status after a delay so response is readable
-    setTimeout(refreshStatus, 4000);
+    refreshStatus();
   } catch (e) {
     console.error('Interact failed:', e);
   }
@@ -314,19 +314,21 @@ async function doPlay(type) {
   try {
     const data = await api(`/pet/${PET_ID}/play`, 'POST', { type });
     showResponse(data);
-    setTimeout(refreshStatus, 4000);
+    refreshStatus();
   } catch (e) {
     console.error('Play failed:', e);
   }
 }
 
 function showResponse(data) {
+  const container = document.getElementById('response-container');
   const el = document.getElementById('response');
-  if (el) {
+  if (el && container) {
     el.innerHTML = `
       ${data.message || '...'}
       <div class="mood-tag">${data.mood || ''}</div>
     `;
+    container.style.display = 'block';
   }
 }
 
