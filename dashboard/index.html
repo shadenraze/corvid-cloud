@@ -191,11 +191,10 @@
 
 <script>
 // === CONFIG ===
-// Set these to your deployed worker URL and pet ID
-const API_URL = window.location.hostname === 'localhost'
-  ? 'http://localhost:8787'
-  : 'https://corvid-cloud.YOUR-SUBDOMAIN.workers.dev';
-const PET_ID = 'scrit'; // default pet
+// Set your deployed worker URL here, or enter it in the dashboard
+const API_URL = localStorage.getItem('corvid_api_url')
+  || (window.location.hostname === 'localhost' ? 'http://localhost:8787' : '');
+const PET_ID = localStorage.getItem('corvid_pet_id') || 'scrit';
 const SHARED_SECRET = ''; // set if auth enabled
 
 const HEADERS = {
@@ -230,7 +229,7 @@ function renderApp(status) {
 
   document.getElementById('app').innerHTML = `
     <div class="header">
-      <h1>${status.name}</h1>
+      <h1>${status.name} <span style="cursor:pointer;font-size:0.6em;opacity:0.5" onclick="showSettings()">⚙️</span></h1>
       <div class="portrait">${status.isSleeping ? '💤 sleeping' : status.mood} · ${ageStr} · ${status.totalInteractions} interactions</div>
     </div>
 
@@ -340,19 +339,54 @@ async function refreshStatus() {
 }
 
 // Initial load
-api(`/pet/${PET_ID}/status`)
-  .then(renderApp)
-  .catch(() => {
-    document.getElementById('app').innerHTML = `
-      <div class="header"><h1>Corvid</h1></div>
-      <div class="card">
-        <div class="response-box">
-          No pet found. Create one?<br><br>
-          <button class="interact-btn" onclick="createPet()">Create Pet</button>
+if (!API_URL) {
+  showSettings();
+} else {
+  api(`/pet/${PET_ID}/status`)
+    .then(renderApp)
+    .catch(() => {
+      document.getElementById('app').innerHTML = `
+        <div class="header"><h1>Corvid</h1></div>
+        <div class="card">
+          <div class="response-box">
+            No pet found. Create one?<br><br>
+            <button class="interact-btn" onclick="createPet()">Create Pet</button>
+          </div>
         </div>
+      `;
+    });
+}
+
+function showSettings() {
+  document.getElementById('app').innerHTML = `
+    <div class="header"><h1>Corvid</h1></div>
+    <div class="card">
+      <div class="response-box">
+        <strong>Setup</strong><br><br>
+        Enter your Cloudflare Worker URL:<br><br>
+        <input id="api-url-input" type="text" placeholder="https://your-pet.your-subdomain.workers.dev"
+          style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:8px;"
+          value="${API_URL || ''}">
+        <br>
+        Pet ID (default: scrit):<br>
+        <input id="pet-id-input" type="text" placeholder="scrit"
+          style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:8px;"
+          value="${PET_ID}">
+        <br>
+        <button class="interact-btn" onclick="saveSettings()">Connect</button>
       </div>
-    `;
-  });
+    </div>
+  `;
+}
+
+function saveSettings() {
+  const url = document.getElementById('api-url-input').value.trim().replace(/\/$/, '');
+  const petId = document.getElementById('pet-id-input').value.trim() || 'scrit';
+  if (!url) { alert('Enter a Worker URL'); return; }
+  localStorage.setItem('corvid_api_url', url);
+  localStorage.setItem('corvid_pet_id', petId);
+  location.reload();
+}
 
 async function createPet() {
   const name = prompt('Name your pet:', 'Scrit');
