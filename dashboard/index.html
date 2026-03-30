@@ -221,19 +221,13 @@
   <div class="loading">Loading...</div>
 </div>
 
-<div id="response-container" style="display:none">
-  <div class="card">
-    <h2>Response</h2>
-    <div class="response-box" id="response"></div>
-  </div>
-</div>
-
 <script>
 // === CONFIG ===
 // Set your deployed worker URL here, or enter it in the dashboard
 const API_URL = localStorage.getItem('corvid_api_url')
   || (window.location.hostname === 'localhost' ? 'http://localhost:8787' : '');
 let PET_ID = localStorage.getItem('corvid_pet_id') || 'scrit';
+let lastResponse = '';
 
 function getPetList() {
   try { return JSON.parse(localStorage.getItem('corvid_pets') || '[]'); } catch { return []; }
@@ -319,7 +313,10 @@ function renderApp(status) {
       </div>
     </div>
 
-
+    ${lastResponse ? `<div class="card">
+      <h2>Response</h2>
+      <div class="response-box">${lastResponse}</div>
+    </div>` : ''}
 
     <div class="card">
       <h2 onclick="toggleNest()" style="cursor:pointer">Nest (${status.collectionSize} items) <span id="nest-toggle">▼</span></h2>
@@ -372,15 +369,10 @@ async function doPlay(type) {
 }
 
 function showResponse(data) {
-  const container = document.getElementById('response-container');
-  const el = document.getElementById('response');
-  if (el && container) {
-    el.innerHTML = `
-      ${data.message || '...'}
-      <div class="mood-tag">${data.mood || ''}</div>
-    `;
-    container.style.display = 'block';
-  }
+  lastResponse = `
+    ${data.message || '...'}
+    <div class="mood-tag">${data.mood || ''}</div>
+  `;
 }
 
 async function refreshStatus() {
@@ -537,7 +529,7 @@ function switchPet(id) {
 }
 
 function showNewPetForm() {
-  document.getElementById('response-container').style.display = 'none';
+  lastResponse = '';
   createPet();
 }
 
