@@ -59,9 +59,50 @@ Each pet is a Durable Object instance. The alarm API triggers ticks every 5 minu
 
 The engine supports species overrides (starting chemistry, word pools, personality voices). Currently defaults to crow behavior. Custom species support coming with the MCP layer.
 
-## MCP Server (Planned)
+## MCP Server
 
-A lightweight MCP server that wraps this API, so any companion (Claude, OpenClaw, etc.) can interact with your pet.
+A lightweight MCP server that wraps the API into tool calls, so any AI companion can interact with your pet.
+
+### Setup
+
+```bash
+pip install -r requirements.txt
+
+# Point at YOUR deployed Worker
+export CORVID_URL=https://your-pet.your-subdomain.workers.dev
+export CORVID_PET_ID=my-pet    # optional, defaults to "default"
+
+python3 mcp_server.py
+```
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `corvid_status` | Pet mood, drives, chemistry, age, current action |
+| `corvid_interact` | Feed, play, talk, pet — pet responds based on state |
+| `corvid_play` | Play session — happiness up, boredom down |
+| `corvid_gift` | Give something — pet reacts, may add to collection |
+| `corvid_trade` | Offer a trade — pet may accept, refuse, or counter |
+| `corvid_collection` | View gathered items, found objects, treasures |
+| `corvid_tick` | Advance time — biochemistry evolves, emergent behavior |
+| `corvid_init` | Create a new pet (once) |
+
+### MCP Config
+
+Add to your companion's MCP config:
+
+```json
+{
+  "corvid": {
+    "command": "python3",
+    "args": ["mcp_server.py"],
+    "env": {
+      "CORVID_URL": "https://your-pet.your-subdomain.workers.dev"
+    }
+  }
+}
+```
 
 ## Based On
 
