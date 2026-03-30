@@ -1,0 +1,19 @@
+{
+  "name": "corvid-cloud",
+  "version": "0.1.0",
+  "description": "Corvid virtual pet — cloud-native via Cloudflare Durable Objects",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.8.0",
+    "@cloudflare/workers-types": "^4.20250320.0",
+    "@types/node": "^25.5.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0",
+    "wrangler": "^4.6.0"
+  }
+}

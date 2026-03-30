@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corvid</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --accent: #e94560;
+    --text: #eee;
+    --text-dim: #999;
+    --bar-bg: #2a2a4a;
+    --bar-hunger: #e94560;
+    --bar-energy: #f5c518;
+    --bar-happy: #53d769;
+    --bar-stress: #ff3b30;
+    --bar-curiosity: #5ac8fa;
+    --bar-trust: #af52de;
+    --bar-lonely: #64d2ff;
+    --bar-bored: #ff9500;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .header h1 {
+    font-size: 28px;
+    font-weight: 600;
+  }
+
+  .header .portrait {
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .card h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  .stat-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .stat-label {
+    width: 80px;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .stat-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--bar-bg);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0 8px;
+  }
+
+  .stat-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+
+  .stat-value {
+    width: 40px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+
+  .interact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+  }
+
+  .interact-btn {
+    background: var(--surface2);
+    border: none;
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .interact-btn:hover {
+    background: var(--accent);
+  }
+
+  .interact-btn:active {
+    transform: scale(0.95);
+  }
+
+  .response-box {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 12px;
+    min-height: 60px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .response-box .mood-tag {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 8px;
+  }
+
+  .collection-list {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .collection-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--bar-bg);
+    font-size: 13px;
+  }
+
+  .collection-item:last-child {
+    border-bottom: none;
+  }
+
+  .item-sparkle {
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .treasured { color: #f5c518; }
+
+  .meta {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 16px;
+  }
+
+  .loading {
+    text-align: center;
+    color: var(--text-dim);
+    padding: 40px;
+  }
+
+  @media (max-width: 480px) {
+    .stat-label { width: 65px; font-size: 12px; }
+    .interact-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="loading">Loading...</div>
+</div>
+
+<script>
+// === CONFIG ===
+// Set these to your deployed worker URL and pet ID
+const API_URL = window.location.hostname === 'localhost'
+  ? 'http://localhost:8787'
+  : 'https://corvid-cloud.YOUR-SUBDOMAIN.workers.dev';
+const PET_ID = 'scrit'; // default pet
+const SHARED_SECRET = ''; // set if auth enabled
+
+const HEADERS = {
+  'Content-Type': 'application/json',
+  ...(SHARED_SECRET ? { 'Authorization': `Bearer ${SHARED_SECRET}` } : {}),
+};
+
+async function api(path, method = 'GET', body = null) {
+  const opts = { method, headers: HEADERS };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${API_URL}${path}`, opts);
+  return res.json();
+}
+
+function renderDrive(name, value, color) {
+  const pct = Math.round(value * 100);
+  return `
+    <div class="stat-row">
+      <span class="stat-label">${name}</span>
+      <div class="stat-bar">
+        <div class="stat-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <span class="stat-value">${pct}%</span>
+    </div>
+  `;
+}
+
+function renderApp(status) {
+  const ageStr = status.ageHours < 24
+    ? `${status.ageHours}h old`
+    : `${(status.ageHours / 24).toFixed(1)}d old`;
+
+  document.getElementById('app').innerHTML = `
+    <div class="header">
+      <h1>${status.name}</h1>
+      <div class="portrait">${status.isSleeping ? '💤 sleeping' : status.mood} · ${ageStr} · ${status.totalInteractions} interactions</div>
+    </div>
+
+    <div class="card">
+      <h2>Chemistry</h2>
+      ${renderDrive('Hunger', status.drives.hunger, 'var(--bar-hunger)')}
+      ${renderDrive('Energy', status.drives.energy, 'var(--bar-energy)')}
+      ${renderDrive('Happy', status.drives.happiness, 'var(--bar-happy)')}
+      ${renderDrive('Stress', status.drives.stress, 'var(--bar-stress)')}
+      ${renderDrive('Curiosity', status.drives.curiosity, 'var(--bar-curiosity)')}
+      ${renderDrive('Trust', status.drives.trust, 'var(--bar-trust)')}
+      ${renderDrive('Lonely', status.drives.loneliness, 'var(--bar-lonely)')}
+      ${renderDrive('Bored', status.drives.boredom, 'var(--bar-bored)')}
+    </div>
+
+    <div class="card">
+      <h2>Interact</h2>
+      <div class="interact-grid">
+        <button class="interact-btn" onclick="doInteract('feed')">🍖 Feed</button>
+        <button class="interact-btn" onclick="doInteract('pet')">✋ Pet</button>
+        <button class="interact-btn" onclick="doInteract('talk')">💬 Talk</button>
+        <button class="interact-btn" onclick="doInteract('poke')">👆 Poke</button>
+        <button class="interact-btn" onclick="doPlay('chase')">🏃 Chase</button>
+        <button class="interact-btn" onclick="doPlay('puzzle')">🧩 Puzzle</button>
+        <button class="interact-btn" onclick="doPlay('tug')">🪢 Tug</button>
+        <button class="interact-btn" onclick="doPlay('hide')">👁️ Hide</button>
+        <button class="interact-btn" onclick="doPlay('wrestle')">🤼 Wrestle</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Response</h2>
+      <div class="response-box" id="response">
+        ${status.nest}
+        <div class="mood-tag">${status.mood}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Nest (${status.collectionSize} items)</h2>
+      <div class="collection-list" id="collection">
+        <div class="loading">Loading collection...</div>
+      </div>
+    </div>
+
+    <div class="meta">
+      ${status.treasuredCount} treasured · ${status.totalCollected} collected · ${status.totalGifted} gifted
+    </div>
+  `;
+
+  loadCollection();
+}
+
+async function loadCollection() {
+  try {
+    const data = await api(`/pet/${PET_ID}/collection`);
+    const el = document.getElementById('collection');
+    if (!el) return;
+    el.innerHTML = data.items.map(item => `
+      <div class="collection-item ${item.treasured ? 'treasured' : ''}">
+        <span>${item.treasured ? '⭐ ' : ''}"${item.content}"</span>
+        <span class="item-sparkle">${item.source}</span>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('Failed to load collection:', e);
+  }
+}
+
+async function doInteract(action) {
+  try {
+    const data = await api(`/pet/${PET_ID}/interact`, 'POST', { action });
+    showResponse(data);
+    refreshStatus();
+  } catch (e) {
+    console.error('Interact failed:', e);
+  }
+}
+
+async function doPlay(type) {
+  try {
+    const data = await api(`/pet/${PET_ID}/play`, 'POST', { type });
+    showResponse(data);
+    refreshStatus();
+  } catch (e) {
+    console.error('Play failed:', e);
+  }
+}
+
+function showResponse(data) {
+  const el = document.getElementById('response');
+  if (el) {
+    el.innerHTML = `
+      ${data.message || '...'}
+      <div class="mood-tag">${data.mood || ''}</div>
+    `;
+  }
+}
+
+async function refreshStatus() {
+  try {
+    const status = await api(`/pet/${PET_ID}/status`);
+    renderApp(status);
+  } catch (e) {
+    console.error('Refresh failed:', e);
+  }
+}
+
+// Initial load
+api(`/pet/${PET_ID}/status`)
+  .then(renderApp)
+  .catch(() => {
+    document.getElementById('app').innerHTML = `
+      <div class="header"><h1>Corvid</h1></div>
+      <div class="card">
+        <div class="response-box">
+          No pet found. Create one?<br><br>
+          <button class="interact-btn" onclick="createPet()">Create Pet</button>
+        </div>
+      </div>
+    `;
+  });
+
+async function createPet() {
+  const name = prompt('Name your pet:', 'Scrit');
+  if (!name) return;
+  await api(`/pet/${PET_ID}/init`, 'POST', { name });
+  refreshStatus();
+}
+
+// Auto-refresh every 5 minutes
+setInterval(refreshStatus, 5 * 60 * 1000);
+</script>
+</body>
+</html>

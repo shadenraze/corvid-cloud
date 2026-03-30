@@ -1,0 +1,15 @@
+name = "corvid-cloud"
+main = "src/worker.ts"
+compatibility_date = "2025-03-20"
+compatibility_flags = ["nodejs_compat"]
+
+[[durable_objects.bindings]]
+name = "PET"
+class_name = "Pet"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Pet"]
+
+[vars]
+# Set SHARED_SECRET for API auth (MCP + dashboard)
