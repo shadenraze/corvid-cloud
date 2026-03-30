@@ -411,12 +411,20 @@ async function createPet() {
   } catch (e) { /* fallback to no species */ }
 
   const speciesOptions = species.map(s =>
-    `<label class="species-option" onclick="document.querySelectorAll('.species-option').forEach(el=>el.classList.remove('selected'));this.classList.add('selected');document.getElementById('species-input').value='${s.id}'">
+    `<label class="species-option" onclick="selectSpecies('${s.id}')">
       <div class="species-emoji">${s.emoji}</div>
       <div><strong>${s.name}</strong><br><small>${s.description}</small></div>
       <input type="radio" name="species" value="${s.id}" style="display:none">
     </label>`
   ).join('');
+
+  const customOption = `
+    <label class="species-option" onclick="selectSpecies('custom')">
+      <div class="species-emoji">✨</div>
+      <div><strong>Custom</strong><br><small>Define your own creature</small></div>
+      <input type="radio" name="species" value="custom" style="display:none">
+    </label>
+  `;
 
   document.getElementById('app').innerHTML = `
     <div class="header"><h1>Corvid</h1></div>
@@ -427,8 +435,21 @@ async function createPet() {
         <input id="name-input" type="text" placeholder="Scrit" value="Scrit"
           style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:12px;">
         <strong>Species:</strong><br><br>
-        <div class="species-grid">${speciesOptions}</div>
+        <div class="species-grid">${speciesOptions}${customOption}</div>
         <input type="hidden" id="species-input" value="${species[0]?.id || ''}">
+        <div id="custom-species-form" style="display:none">
+          <br>
+          <input id="custom-name" type="text" placeholder="Species name (e.g. Mushroom Sprite)"
+            style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:6px;">
+          <input id="custom-emoji" type="text" placeholder="Emoji (e.g. 🍄)"
+            style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:6px;">
+          <input id="custom-desc" type="text" placeholder="One-line description"
+            style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:6px;">
+          <input id="custom-words" type="text" placeholder="Shiny words (comma separated)"
+            style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:6px;">
+          <input id="custom-objects" type="text" placeholder="Found objects (comma separated)"
+            style="width:100%;padding:8px;background:#1a1a2e;border:1px solid #4a4a8a;color:#e0e0ff;border-radius:4px;margin-bottom:6px;">
+        </div>
         <br>
         <button class="interact-btn" onclick="submitCreate()">Create</button>
       </div>
@@ -436,10 +457,38 @@ async function createPet() {
   `;
 }
 
+function selectSpecies(id) {
+  document.querySelectorAll('.species-option').forEach(el => el.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  document.getElementById('species-input').value = id;
+  document.getElementById('custom-species-form').style.display = id === 'custom' ? 'block' : 'none';
+}
+
 async function submitCreate() {
   const name = document.getElementById('name-input').value.trim() || 'Scrit';
   const speciesId = document.getElementById('species-input').value;
-  await api(`/pet/${PET_ID}/init`, 'POST', { name, speciesId: speciesId || undefined });
+
+  if (speciesId === 'custom') {
+    const customName = document.getElementById('custom-name').value.trim() || 'Unknown';
+    const customEmoji = document.getElementById('custom-emoji').value.trim() || '🐾';
+    const customDesc = document.getElementById('custom-desc').value.trim() || 'A unique creature.';
+    const customWords = document.getElementById('custom-words').value.split(',').map(s => s.trim()).filter(Boolean);
+    const customObjects = document.getElementById('custom-objects').value.split(',').map(s => s.trim()).filter(Boolean);
+    const customId = customName.toLowerCase().replace(/\s+/g, '-');
+    await api(`/pet/${PET_ID}/init`, 'POST', {
+      name,
+      species: {
+        id: customId,
+        name: customName,
+        emoji: customEmoji,
+        description: customDesc,
+        shinyWords: customWords,
+        foundObjects: customObjects,
+      }
+    });
+  } else {
+    await api(`/pet/${PET_ID}/init`, 'POST', { name, speciesId: speciesId || undefined });
+  }
   refreshStatus();
 }
 

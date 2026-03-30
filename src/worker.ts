@@ -74,13 +74,21 @@ export default {
       return errorResponse("Unauthorized", 401);
     }
 
-    // Create/init pet: POST /pet/:id/init { name }
+    // Create/init pet: POST /pet/:id/init { name, speciesId?, species? }
     const initMatch = pathname.match(/^\/pet\/([^/]+)\/init$/);
     if (initMatch && request.method === "POST") {
       const petId = initMatch[1];
-      const body = await request.json() as { name?: string; speciesId?: string };
+      const body = await request.json() as {
+        name?: string;
+        speciesId?: string;
+        species?: {
+          id: string; name: string; emoji?: string; description?: string;
+          startingChemistry?: Record<string, number>;
+          shinyWords?: string[]; foundObjects?: string[];
+        };
+      };
       const stub = getPetStub(env, petId);
-      const result = await stub.initialize(body.name ?? "unnamed", body.speciesId);
+      const result = await stub.initialize(body.name ?? "unnamed", body.speciesId, body.species);
       return json(result);
     }
 
