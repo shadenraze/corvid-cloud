@@ -9,6 +9,8 @@ import { BiochemSystem } from "./biochem";
 import { Collection, Trinket } from "./collection";
 import { CrowBrain, ACTIONS } from "./brain";
 import { getSpecies, listSpecies, SpeciesPreset } from "./species";
+import { getBehavior, getBehaviorSummary, getTrustTierName, type DriveState } from "./behaviors";
+import { UnlockManager, type UnlockState, type UnlockRecord } from "./unlocks";
 
 interface PetState {
   name: string;
@@ -34,6 +36,9 @@ interface PetState {
   preferenceWeights: Record<string, number>;
   ageTicks: number;
   actionHistory: Array<{ time: number; stimulus: string; action: string; mood: string }>;
+  firedMilestones: string[];
+  previousTrust: number;
+  unlockState?: UnlockState;
   savedAt: number;
 }
 
@@ -50,6 +55,9 @@ export class Pet extends DurableObject {
   private isSleeping: boolean = false;
   private currentAction: string = "explore";
   private actionHistory: Array<{ time: number; stimulus: string; action: string; mood: string }> = [];
+  private firedMilestones: string[] = [];
+  private previousTrust: number = 0.1;
+  private unlockManager: UnlockManager = new UnlockManager();
   private initialized: boolean = false;
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -180,6 +188,16 @@ export class Pet extends DurableObject {
     const event = this.executeAction(action);
     const postState = this.wellbeingScore();
     this.brain.learn(postState - preState);
+
+    // Behavioral texture
+    const chemState = this.biochem.getState();
+    const driveState: DriveState = this.biochem.getDriveState() as unknown as DriveState;
+    event.behavior = getBehavior(driveState, this.name);
+    event.trustTier = getTrustTierName(driveState.trust);
+
+    // Personality unlocks
+    const newUnlocks = this.unlockManager.checkUnlock(chemState);
+    if (newUnlocks.length > 0) event.unlocks = newUnlocks;
 
     event.stimulus = stimulus;
     event.mood = this.biochem.getMoodSummary();
@@ -392,6 +410,9 @@ export class Pet extends DurableObject {
       totalAccepted: this.collection.totalAccepted,
       totalDeclined: this.collection.totalDeclined,
       treasuredCount: this.collection.trinkets.filter(t => t.treasured).length,
+      behavior: getBehavior(this.biochem.getDriveState() as unknown as DriveState, this.name),
+      trustTier: getTrustTierName(this.biochem.chemicals.get("trust")!.level),
+      unlocks: this.unlockManager.getStatus(),
     };
   }
 
@@ -535,6 +556,9 @@ export class Pet extends DurableObject {
       preferenceWeights: this.collection.preferenceWeights,
       ageTicks: this.biochem.ageTicks,
       actionHistory: this.actionHistory.slice(-20),
+      firedMilestones: this.firedMilestones,
+      previousTrust: this.previousTrust,
+      unlockState: this.unlockManager.save(),
       savedAt: Date.now() / 1000,
     };
     this.ctx.storage.sql.exec("INSERT OR REPLACE INTO pet (key, value) VALUES ('state', ?)", JSON.stringify(state));
