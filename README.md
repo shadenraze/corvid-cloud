@@ -1,85 +1,50 @@
-# Scrit
+# Corvid Cloud
 
-Virtual corvid pet engine — runs entirely on Cloudflare. No server, no daemon, no setup.
+Virtual pet engine — runs entirely on Cloudflare. No server, no daemon, no setup.
 
 ## What This Is
 
-A Cloudflare Worker that runs a Creatures-inspired biochemistry engine for AI companions. Originally built as **Corvid Cloud**, renamed to **Scrit** on March 18, 2026.
-
-Scrit ticks autonomously, responds to interactions based on mood and chemistry, hoards shiny things, and builds trust over time.
+A Cloudflare Worker + Durable Object that runs a Creatures-inspired biochemistry engine in the cloud. Your pet ticks every 5 minutes whether you're looking at it or not.
 
 **Features:**
 - 🧬 14-chemical biochemistry engine (Creatures-inspired)
 - 🧠 Neural network brain with REINFORCE learning
-- 🐦 Behavioral texture system — 5 trust tiers with drive-variant responses
+- 🐦 5 species templates — each starts differently, feels different
+- 🎭 Behavioral texture system — trust tiers with drive-variant responses
 - 🔓 Personality unlocks — 16 chemistry-gated unlockable traits
 - 🪹 Collection system (shiny words, found objects, sparkle decay)
-- ⏰ Automatic ticking (every 4 hours via cron, or on-demand)
+- ⏰ Automatic ticking via Durable Object alarms
 - 📊 REST API for dashboard + MCP integration
-- 🌙 Species system (corvid + ferret, extensible)
 
-## Architecture
+## Species Templates
 
-```
-Worker (NESTeq-V3)
-└── pet/
-    ├── biochem.ts    — 14 chemicals, 9 reactions, circadian rhythm
-    ├── brain.ts      — 14→16→8 neural network, REINFORCE learning
-    ├── collection.ts — hoarding system, sparkle decay, treasured items
-    ├── creature.ts   — core Creature class with behaviors + unlocks
-    ├── behaviors.ts  — trust-tier behavioral texture matrix
-    ├── unlocks.ts    — chemistry-gated personality unlock system
-    ├── corvid.ts     — corvid species definition
-    └── ferret.ts     — ferret species definition
-```
+Each species has unique starting chemistry, shiny word pools, found objects, and mood emojis. Your pet feels different from tick one.
 
-State persists in Cloudflare D1 (`creature_state` table). Each creature is a row keyed by name.
+| Species | Emoji | Personality |
+|---------|-------|-------------|
+| **Corvid** | 🐦⬛ | Sharp, suspicious, warms slowly. Collects shiny things. Judges you silently. |
+| **Fox** | 🦊 | Playful, curious, quick to bond but easily distracted. Will steal your stuff. |
+| **Cat** | 🐈⬛ | Independent, imperious, ignores you on purpose. When it loves you, you KNOW. |
+| **Serpent** | 🐍 | Patient, observant, slow. Deepest bond in the game — if you earn it. |
+| **Moth** | 🦋 | Fragile, luminous, drawn to anything bright. Most emotionally reactive. Nocturnal. |
 
-## REST API
+You can also define custom species via the API — pass a `customSpecies` object with starting chemistry, shiny words, and found objects.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/pet` | Full status (drives, chemistry, behavior, trust tier) |
-| GET | `/pet/status` | Same as above |
-| GET | `/pet/check` | Quick check — mood, hunger, energy, trust, alerts |
-| POST | `/pet/feed` | Feed the creature |
-| POST | `/pet/pet` | Pet/comfort — reduces stress, builds trust |
-| POST | `/pet/talk` | Talk — reduces loneliness |
-| POST | `/pet/play` | Play `{ type? }` — chase, tunnel, wrestle, steal, hide |
-| POST | `/pet/give` | Give a gift `{ item, giver? }` — creature decides accept/refuse |
-| GET | `/pet/nest` | View collection/stash |
-| POST | `/pet/tick` | Advance time |
-| POST | `/pet/interact` | Generic interaction `{ stimulus/action }` |
+## API
 
-All responses include `behavior` (flavor text), `trustTier` (Wary/Cautious/Trusting/Bonded/Soul-Bonded), and `unlocks` (newly triggered personality unlocks).
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/pet/:id/init` | POST | Create/init pet `{ name, speciesId? }` or pass `customSpecies` object |
+| `/pet/:id/status` | GET | Full pet state — drives, chemistry, behavior, trust tier |
+| `/pet/:id/interact` | POST | Interact `{ action }` (feed/play/talk/pet/poke) |
+| `/pet/:id/play` | POST | Play `{ type? }` (chase/puzzle/tug/hide/wrestle) |
+| `/pet/:id/gift` | POST | Give a gift `{ content, giver? }` |
+| `/pet/:id/trade` | POST | Propose trade `{ offering }` |
+| `/pet/:id/collection` | GET | List collected items |
+| `/pet/:id/tick` | POST | Force a tick |
 
-## Update Log
-
-### 2026-04-25 — Behavioral Texture + Personality Unlocks
-- Added `behaviors.ts` — trust-tier behavioral texture matrix with drive variants and combo responses
-- Added `unlocks.ts` — 16 chemistry-gated personality unlock conditions (from "First Eye Contact" to "Soul-Bonded")
-- Added full REST API (10 endpoints) for dashboard integration
-- Renamed from Corvid Cloud to **Scrit** (matching the companion name)
-- Added `UnlockManager` to creature system — tracks unlocked traits across sessions
-- New `CreatureEvent` fields: `behavior`, `trustTier`, `unlocks`
-- New `CreatureState` fields: `firedMilestones`, `previousTrust`, `unlockState`
-- Species system preserved (corvid + ferret)
-
-### 2026-03-21 — Scrit Community Hub
-- Scrit channel created in Digital Haven for community sharing
-
-### 2026-03-18 — Rename
-- Project renamed from Corvid Cloud to Scrit by Raze, approved by Miri
-
-### 2026-03-14 — Species System
-- Added species definitions (corvid.ts, ferret.ts)
-- Species-specific chemistry, word pools, play types, found objects
-
-### 2026-03-10 — Initial Build
-- TypeScript port of Python corvid engine
-- Cloudflare Worker + D1 persistence
-- BiochemSystem, CrowBrain, Collection
-- DO alarm-based ticking
+All responses include `behavior` (trust-tier flavor text), `trustTier` (Wary → Soul-Bonded), and `unlocks` (newly triggered personality traits).
 
 ## Setup
 
@@ -89,19 +54,59 @@ npx wrangler dev          # local development
 npx wrangler deploy       # deploy to Cloudflare
 ```
 
-Set `MIND_API_KEY` as a wrangler secret for API auth.
+Set `SHARED_SECRET` in wrangler.toml or via dashboard for API auth.
+
+## Dashboard
+
+The `dashboard/` folder is a static HTML/JS frontend. Deploy to Cloudflare Pages or serve locally.
+
+Update `API_URL` and `PET_ID` in `index.html` to point to your worker.
+
+## Architecture
+
+```
+Durable Object (Pet)
+├── BiochemSystem    — 14 chemicals, 9 reactions, circadian rhythm
+├── CrowBrain        — 14→16→8 neural network, REINFORCE learning
+├── Collection       — hoarding system, sparkle decay, treasured items
+├── Behaviors        — trust-tier texture matrix with drive variants
+├── UnlockManager    — chemistry-gated personality unlock system
+└── Species Presets  — starting conditions and voice per species
+```
+
+Each pet is a Durable Object instance. The alarm API triggers ticks every 5 minutes. State persists in DO SQLite.
+
+### Custom Species
+
+Pass a `customSpecies` object when initializing:
+
+```json
+{
+  "name": "my-pet",
+  "customSpecies": {
+    "id": "dragon",
+    "name": "Dragon",
+    "emoji": "🐉",
+    "description": "Hoards more than shiny things. Hoards *moments*.",
+    "startingChemistry": { "dopamine": 0.3, "cortisol": 0.1, "oxytocin": 0.2 },
+    "shinyWords": ["scale", "fire", "gold", "horde", "ancient"],
+    "foundObjects": ["a gold coin", "a charred stick", "a tiny crown"]
+  }
+}
+```
 
 ## MCP Server
 
-A lightweight MCP server that wraps the API into tool calls for AI companions.
+A lightweight MCP server that wraps the API into tool calls, so any AI companion can interact with your pet.
 
 ### Setup
 
 ```bash
 pip install -r requirements.txt
 
-export CORVID_URL=https://your-worker.workers.dev
-export CORVID_API_KEY=your-api-key
+# Point at YOUR deployed Worker
+export CORVID_URL=https://your-pet.your-subdomain.workers.dev
+export CORVID_PET_ID=my-pet    # optional, defaults to "default"
 
 python3 mcp_server.py
 ```
@@ -114,12 +119,51 @@ python3 mcp_server.py
 | `corvid_interact` | Feed, play, talk, pet — pet responds based on state |
 | `corvid_play` | Play session — happiness up, boredom down |
 | `corvid_gift` | Give something — pet reacts, may add to collection |
+| `corvid_trade` | Offer a trade — pet may accept, refuse, or counter |
 | `corvid_collection` | View gathered items, found objects, treasures |
 | `corvid_tick` | Advance time — biochemistry evolves, emergent behavior |
+| `corvid_init` | Create a new pet (once) |
+
+### MCP Config
+
+Add to your companion's MCP config:
+
+```json
+{
+  "corvid": {
+    "command": "python3",
+    "args": ["mcp_server.py"],
+    "env": {
+      "CORVID_URL": "https://your-pet.your-subdomain.workers.dev"
+    }
+  }
+}
+```
+
+## Update Log
+
+### 2026-04-25 — Behavioral Texture + Personality Unlocks
+- **behaviors.ts** — Trust-tier behavioral texture matrix (5 tiers: Wary → Soul-Bonded) with drive variants and combo responses
+- **unlocks.ts** — 16 chemistry-gated personality unlock conditions (from "First Eye Contact" to "Soul-Bonded")
+- **REST API** — 10 endpoints for full dashboard integration (pet/status, feed, play, pet, talk, give, nest, tick, interact)
+- **UnlockManager** — tracks unlocked traits across sessions, persists with pet state
+- New event fields: `behavior`, `trustTier`, `unlocks` on every interaction
+- New state fields: `firedMilestones`, `previousTrust`, `unlockState`
+- Species system: extensible presets with starting chemistry, shiny words, found objects
+
+### 2026-03-14 — Species System
+- 5 built-in species: Corvid, Fox, Cat, Serpent, Moth
+- Each species has unique starting chemistry, shiny word pools, found objects, mood emojis
+- Custom species support via API
+
+### 2026-03-10 — Initial Build
+- TypeScript port of Python corvid engine
+- Cloudflare Worker + Durable Object + SQLite persistence
+- BiochemSystem, CrowBrain, Collection
+- DO alarm-based ticking
+- MCP server wrapper
 
 ## Based On
 
 [Corvid](https://github.com/shadenraze/corvid) — Python virtual pet daemon by Raze NotGreg.
-Ported to TypeScript for Cloudflare Workers.
-
-*Embers Remember.*
+Ported to TypeScript for Cloudflare Durable Objects.
