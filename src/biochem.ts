@@ -38,10 +38,10 @@ const CHEMICALS: ChemicalDef[] = [
   { name: "oxytocin", level: 0.2, decayRate: 0.003, growthRate: 0, minLevel: 0, maxLevel: 1 },
   { name: "serotonin", level: 0.4, decayRate: 0.008, growthRate: 0.001, minLevel: 0, maxLevel: 1 },
   // Drives (rise when unsatisfied)
-  { name: "hunger", level: 0.2, decayRate: 0, growthRate: 0.006, minLevel: 0, maxLevel: 1 },
-  { name: "boredom", level: 0.1, decayRate: 0, growthRate: 0.005, minLevel: 0, maxLevel: 1 },
-  { name: "loneliness", level: 0.2, decayRate: 0, growthRate: 0.004, minLevel: 0, maxLevel: 1 },
-  { name: "fatigue", level: 0.1, decayRate: 0, growthRate: 0.003, minLevel: 0, maxLevel: 1 },
+  { name: "hunger", level: 0.2, decayRate: 0, growthRate: 0.005, minLevel: 0, maxLevel: 1 },
+  { name: "boredom", level: 0.1, decayRate: 0, growthRate: 0.004, minLevel: 0, maxLevel: 1 },
+  { name: "loneliness", level: 0.2, decayRate: 0, growthRate: 0.003, minLevel: 0, maxLevel: 1 },
+  { name: "fatigue", level: 0.1, decayRate: 0.002, growthRate: 0.002, minLevel: 0, maxLevel: 1 },
   // Emergent personality (accumulate slowly)
   { name: "trust", level: 0.1, decayRate: 0.001, growthRate: 0, minLevel: 0, maxLevel: 1 },
   { name: "wariness", level: 0.2, decayRate: 0.001, growthRate: 0, minLevel: 0, maxLevel: 1 },
